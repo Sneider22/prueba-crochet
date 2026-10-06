@@ -357,9 +357,10 @@ export default function AdminModal({
 
                     <button
                       type="submit"
-                      className="px-4.5 py-2 rounded-full bg-gradient-to-r from-[#ff8fa3] to-[#ff4d6d] text-white text-xs sm:text-sm font-extrabold shadow-sm hover:shadow-md active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                      className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff8fa3] to-[#ff4d6d] text-white font-black shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer shrink-0"
+                      title="Añadir pedido"
                     >
-                      <Plus className="w-4 h-4" /> Añadir
+                      <Plus className="w-5 h-5 stroke-[2.5]" />
                     </button>
                   </form>
 
