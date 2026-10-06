@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { initialProducts } from './data/products';
+
+// Los productos de oferta son SIEMPRE los originales con oldPrice (fijos, no cambian)
+const fixedOfferProducts = initialProducts.filter(p => p.oldPrice);
 import Header from './components/Header';
 import Hero from './components/Hero';
 import OffersSection from './components/OffersSection';
@@ -47,9 +51,16 @@ export default function App() {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Fetch products from Supabase
+  // Fetch products from Supabase and merge with initial products
   useEffect(() => {
     const fetchProducts = async () => {
+      // Si Supabase no está configurado, mostramos los productos locales directamente
+      if (!supabase) {
+        setProducts(initialProducts);
+        setLoadingProducts(false);
+        return;
+      }
+
       try {
         setLoadingProducts(true);
         const { data, error } = await supabase
@@ -59,11 +70,16 @@ export default function App() {
 
         if (error) {
           console.error("Error fetching products:", error);
-        } else if (data) {
-          setProducts(data);
+          setProducts(initialProducts);
+        } else {
+          // Los de Supabase van primero (más recientes), luego los originales de siempre
+          const supabaseIds = new Set((data || []).map(p => String(p.id)));
+          const filteredInitial = initialProducts.filter(p => !supabaseIds.has(String(p.id)));
+          setProducts([...(data || []), ...filteredInitial]);
         }
       } catch (err) {
         console.error("Fetch error:", err);
+        setProducts(initialProducts);
       } finally {
         setLoadingProducts(false);
       }
@@ -112,13 +128,13 @@ export default function App() {
   const handleToggleOffer = async (id) => {
     const prod = products.find(p => p.id === id);
     if (!prod) return;
-    const newOldPrice = prod.oldprice ? null : Number((prod.price * 1.25).toFixed(2));
+    const newOldPrice = prod.oldPrice ? null : Number((prod.price * 1.25).toFixed(2));
     const { error } = await supabase
       .from('products')
-      .update({ oldprice: newOldPrice })
+      .update({ oldPrice: newOldPrice })
       .eq('id', id);
     if (error) { showToast('Error actualizando oferta', 'error'); return; }
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, oldprice: newOldPrice } : p));
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, oldPrice: newOldPrice } : p));
     showToast(newOldPrice ? `"${prod.name}" marcado en OFERTA ✨` : `Oferta removida de "${prod.name}"`, newOldPrice ? 'success' : 'info');
   };
 
@@ -165,11 +181,13 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* Ofertas: siempre los mismos 4 productos originales, nunca cambian */}
             <OffersSection
-              products={products}
+              products={fixedOfferProducts}
               onOpenDetail={(prod) => setSelectedDetailProduct(prod)}
               onAddToCart={(prod) => handleAddToCart(prod, 1)}
             />
+            {/* Catálogo: productos de Supabase (nuevos) + originales */}
             <CatalogSection
               products={products}
               onOpenDetail={(prod) => setSelectedDetailProduct(prod)}
