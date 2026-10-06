@@ -87,7 +87,7 @@ export default function AdminModal({
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="sofiavsh"
+                  placeholder="Usuario"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#ffccd5] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff8fa3]"
                 />
               </div>
