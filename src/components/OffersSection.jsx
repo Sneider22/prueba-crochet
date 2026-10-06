@@ -23,7 +23,7 @@ export default function OffersSection({ products, onOpenDetail, onAddToCart }) {
       {/* Horizontal Swipeable Container on Mobile, Grid on Desktop */}
       <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 overflow-x-auto pb-3 sm:pb-0 scrollbar-none snap-x snap-mandatory">
         {offerProducts.map(product => {
-          const mainImg = product.image || (product.images && product.images[0]) || 'logo.jpg';
+          const mainImg = product.image || (product.images && product.images[0]) || '/logo.jpg';
           return (
             <div 
               key={product.id}
@@ -38,7 +38,7 @@ export default function OffersSection({ products, onOpenDetail, onAddToCart }) {
                   src={mainImg} 
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => { e.target.src = 'logo.jpg'; }}
+                  onError={(e) => { e.target.src = '/logo.jpg'; }}
                 />
 
                 {/* Offer Badge Overlay */}

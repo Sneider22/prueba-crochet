@@ -2,7 +2,7 @@ import React from 'react';
 import { Star, ShoppingBag } from 'lucide-react';
 
 export default function ProductCard({ product, onOpenDetail, onAddToCart }) {
-  const mainImage = product.image || (product.images && product.images[0]) || 'logo.jpg';
+  const mainImage = product.image || (product.images && product.images[0]) || '/logo.jpg';
   const displayCategory = Array.isArray(product.category) ? product.category[0] : product.category;
   const isOffer = !!product.oldPrice;
 
@@ -18,7 +18,7 @@ export default function ProductCard({ product, onOpenDetail, onAddToCart }) {
           src={mainImage} 
           alt={product.name} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => { e.target.src = 'logo.jpg'; }}
+          onError={(e) => { e.target.src = '/logo.jpg'; }}
         />
 
         {/* Badges */}

@@ -12,7 +12,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
 
   if (!product) return null;
 
-  const images = product.images && product.images.length > 0 ? product.images : [product.image || 'logo.jpg'];
+  const images = product.images && product.images.length > 0 ? product.images : [product.image || '/logo.jpg'];
   const displayCategory = Array.isArray(product.category) ? product.category[0] : product.category;
 
   const handlePrevImg = () => {
@@ -41,7 +41,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
             src={images[currentImgIndex]}
             alt={product.name}
             className="w-full h-full object-cover max-h-[380px]"
-            onError={(e) => { e.target.src = 'logo.jpg'; }}
+            onError={(e) => { e.target.src = '/logo.jpg'; }}
           />
 
           {images.length > 1 && (
