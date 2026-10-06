@@ -25,7 +25,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#ffccd5] max-h-[90vh] flex flex-col md:flex-row">
+      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#ffccd5] h-auto md:h-[550px] max-h-[90vh] flex flex-col md:flex-row">
         
         {/* Close Button */}
         <button
@@ -36,11 +36,11 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
         </button>
 
         {/* Gallery Image Slider */}
-        <div className="relative md:w-1/2 bg-[#fff0f3] flex items-center justify-center min-h-[280px]">
+        <div className="relative md:w-1/2 bg-[#fff0f3] flex items-center justify-center min-h-[300px] md:min-h-full">
           <img
             src={images[currentImgIndex]}
             alt={product.name}
-            className="w-full h-full object-cover max-h-[380px]"
+            className="w-full h-full object-cover"
             onError={(e) => { e.target.src = '/logo.jpg'; }}
           />
 
@@ -82,11 +82,11 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
               {displayCategory}
             </span>
 
-            <h2 className="text-xl sm:text-2xl font-black text-[#590d22] leading-tight mb-2">
+            <h2 className="text-xl sm:text-3xl font-black text-[#590d22] leading-tight mb-3">
               {product.name}
             </h2>
 
-            <p className="text-sm text-[#800f2f]/80 leading-relaxed mb-3">
+            <p className="text-sm md:text-base lg:text-lg text-[#800f2f]/80 leading-relaxed mb-4">
               {product.description || "Producto elaborado a mano con hilos de la mejor calidad. Hipolaergénico y suave al tacto."}
             </p>
 
