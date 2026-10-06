@@ -1,14 +1,34 @@
-import React from 'react';
-import { ShoppingBag, Sliders } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingBag } from 'lucide-react';
 
 export default function Header({ cartCount, onOpenCart, onOpenLogin, onResetCatalog }) {
+  const [clickCount, setClickCount] = useState(0);
+
+  const handleLogoClick = () => {
+    setClickCount(prev => prev + 1);
+    
+    // Si llega a 5 clics, abrimos el modal de admin y reseteamos el contador
+    if (clickCount + 1 === 5) {
+      onOpenLogin();
+      setClickCount(0);
+    }
+    
+    // El scroll to top que tenía antes
+    onResetCatalog();
+    
+    // Reiniciamos el contador si pasa mucho tiempo entre clics (opcional pero recomendado)
+    setTimeout(() => {
+      setClickCount(0);
+    }, 2000);
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-white/50 shadow-sm transition-all">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         
         {/* Brand Logo & Name */}
         <div 
-          onClick={onResetCatalog}
+          onClick={handleLogoClick}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-gradient-to-tr from-[#ff8fa3] to-[#ffb703] p-0.5 group-hover:scale-105 transition-transform">
@@ -29,14 +49,6 @@ export default function Header({ cartCount, onOpenCart, onOpenLogin, onResetCata
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenLogin}
-            className="w-10 h-10 rounded-full bg-[#fff0f3] border border-[#ffccd5] text-[#590d22] hover:bg-[#ff8fa3] hover:text-white flex items-center justify-center transition-all shadow-sm active:scale-95"
-            title="Panel de Administración"
-          >
-            <Sliders className="w-5 h-5" />
-          </button>
-
           <button
             onClick={onOpenCart}
             className="relative p-2.5 rounded-full bg-white border border-[#ffccd5] text-[#ff4d6d] hover:bg-[#fff0f3] transition-all shadow-sm active:scale-95 flex items-center justify-center"

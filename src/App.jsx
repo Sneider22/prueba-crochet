@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { initialProducts } from './data/products';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import OffersSection from './components/OffersSection';
@@ -13,21 +12,11 @@ import AdminModal from './components/AdminModal';
 import ProductFormModal from './components/ProductFormModal';
 import Toast from './components/Toast';
 import WhatsAppFAB from './components/WhatsAppFAB';
+import { supabase } from './lib/supabase';
 
 export default function App() {
-  // Load products from LocalStorage if available
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('zafiro_products');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {
-        console.error("Error al parsear productos:", e);
-      }
-    }
-    return initialProducts;
-  });
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   // Load cart from LocalStorage
   const [cart, setCart] = useState(() => {
@@ -58,33 +47,48 @@ export default function App() {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Sync products to LocalStorage
-  const saveProducts = (updatedProducts) => {
-    setProducts(updatedProducts);
-    localStorage.setItem('zafiro_products', JSON.stringify(updatedProducts));
-  };
+  // Fetch products from Supabase
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error("Error fetching products:", error);
+        } else if (data) {
+          setProducts(data);
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Cart operations
   const handleAddToCart = (product, quantity = 1) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => 
+        return prev.map(item =>
           item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
       return [...prev, { ...product, quantity }];
     });
-
     showToast(`¡"${product.name}" agregado a tu carrito! ✨`, 'success');
-    setIsCartOpen(true); // Abre el modal del carrito para confirmación inmediata
+    setIsCartOpen(true);
   };
 
   const handleUpdateQuantity = (id, quantity) => {
-    if (quantity <= 0) {
-      handleRemoveFromCart(id);
-      return;
-    }
+    if (quantity <= 0) { handleRemoveFromCart(id); return; }
     setCart(prev => prev.map(item => item.id === id ? { ...item, quantity } : item));
   };
 
@@ -92,65 +96,51 @@ export default function App() {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  // Product Admin operations
-  const handleSaveProduct = (productData) => {
-    const exists = products.some(p => p.id === productData.id);
-    let updated;
+  // Product Admin operations - Supabase
+  const handleSaveProduct = (savedProduct) => {
+    // savedProduct viene directo de Supabase ya guardado
+    const exists = products.some(p => p.id === savedProduct.id);
     if (exists) {
-      updated = products.map(p => p.id === productData.id ? productData : p);
+      setProducts(prev => prev.map(p => p.id === savedProduct.id ? savedProduct : p));
       showToast("¡Producto actualizado exitosamente! ✨", "success");
     } else {
-      updated = [productData, ...products];
+      setProducts(prev => [savedProduct, ...prev]);
       showToast("¡Nuevo producto agregado al catálogo! 🎉", "success");
     }
-    saveProducts(updated);
   };
 
-  const handleToggleOffer = (id) => {
-    const updated = products.map(p => {
-      if (p.id === id) {
-        if (p.oldPrice) {
-          const { oldPrice, ...rest } = p;
-          showToast(`Oferta removida de "${p.name}"`, "info");
-          return rest;
-        } else {
-          showToast(`"${p.name}" marcado en OFERTA ✨`, "success");
-          return { ...p, oldPrice: Number((p.price * 1.25).toFixed(2)) };
-        }
-      }
-      return p;
-    });
-    saveProducts(updated);
-  };
-
-  const handleDeleteProduct = (id) => {
+  const handleToggleOffer = async (id) => {
     const prod = products.find(p => p.id === id);
     if (!prod) return;
+    const newOldPrice = prod.oldprice ? null : Number((prod.price * 1.25).toFixed(2));
+    const { error } = await supabase
+      .from('products')
+      .update({ oldprice: newOldPrice })
+      .eq('id', id);
+    if (error) { showToast('Error actualizando oferta', 'error'); return; }
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, oldprice: newOldPrice } : p));
+    showToast(newOldPrice ? `"${prod.name}" marcado en OFERTA ✨` : `Oferta removida de "${prod.name}"`, newOldPrice ? 'success' : 'info');
+  };
 
-    if (window.confirm(`¿Estás seguro de eliminar "${prod.name}"?`)) {
-      const updated = products.filter(p => p.id !== id);
-      saveProducts(updated);
-      showToast("Producto eliminado", "info");
-    }
+  const handleDeleteProduct = async (id) => {
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
+    if (!window.confirm(`¿Estás seguro de eliminar "${prod.name}"?`)) return;
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) { showToast('Error eliminando producto', 'error'); return; }
+    setProducts(prev => prev.filter(p => p.id !== id));
+    showToast("Producto eliminado", "info");
   };
 
   const handleExportJSON = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "zafiro_productos_backup.json");
-    document.body.appendChild(dlAnchorElem);
-    dlAnchorElem.click();
-    dlAnchorElem.remove();
+    const el = document.createElement('a');
+    el.setAttribute("href", dataStr);
+    el.setAttribute("download", "zafiro_productos_backup.json");
+    document.body.appendChild(el);
+    el.click();
+    el.remove();
     showToast("¡Descarga de respaldo completada! 💾", "success");
-  };
-
-  const handleResetDefault = () => {
-    if (window.confirm("¿Estás seguro de restablecer el catálogo al estado inicial? Se borrarán los productos creados o editados localmente.")) {
-      localStorage.removeItem('zafiro_products');
-      setProducts(initialProducts);
-      showToast("Catálogo restablecido al estado original 🔄", "info");
-    }
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -169,16 +159,24 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1">
         <Hero />
-        <OffersSection
-          products={products}
-          onOpenDetail={(prod) => setSelectedDetailProduct(prod)}
-          onAddToCart={(prod) => handleAddToCart(prod, 1)}
-        />
-        <CatalogSection
-          products={products}
-          onOpenDetail={(prod) => setSelectedDetailProduct(prod)}
-          onAddToCart={(prod) => handleAddToCart(prod, 1)}
-        />
+        {loadingProducts ? (
+          <div className="flex justify-center items-center py-24">
+            <div className="w-10 h-10 rounded-full border-4 border-[#ffccd5] border-t-[#ff4d6d] animate-spin" />
+          </div>
+        ) : (
+          <>
+            <OffersSection
+              products={products}
+              onOpenDetail={(prod) => setSelectedDetailProduct(prod)}
+              onAddToCart={(prod) => handleAddToCart(prod, 1)}
+            />
+            <CatalogSection
+              products={products}
+              onOpenDetail={(prod) => setSelectedDetailProduct(prod)}
+              onAddToCart={(prod) => handleAddToCart(prod, 1)}
+            />
+          </>
+        )}
         <InfoBar />
         <SuggestionsSection onShowToast={showToast} />
         <FaqSection />
@@ -216,7 +214,6 @@ export default function App() {
         onToggleOffer={handleToggleOffer}
         onDeleteProduct={handleDeleteProduct}
         onExportJSON={handleExportJSON}
-        onResetDefault={handleResetDefault}
       />
 
       <ProductFormModal
