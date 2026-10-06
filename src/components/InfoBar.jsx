@@ -10,8 +10,8 @@ export default function InfoBar() {
   ];
 
   return (
-    <section className="bg-white/80 border-y border-[#ffccd5] py-8 my-10 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6">
+    <section className="bg-white/80 border-y border-[#ffccd5] py-6 sm:py-8 my-8 sm:my-10 backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         {items.map((item, idx) => {
           const Icon = item.icon;
           return (

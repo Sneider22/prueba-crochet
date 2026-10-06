@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, ShoppingBag, Star, Plus, Minus } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ShoppingBag, Plus, Minus } from 'lucide-react';
 
 export default function ProductDetailModal({ product, onClose, onAddToCart }) {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
@@ -76,28 +76,21 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
         </div>
 
         {/* Details Column */}
-        <div className="p-6 md:w-1/2 flex flex-col justify-between overflow-y-auto">
+        <div className="p-5 md:w-1/2 flex flex-col justify-between overflow-y-auto">
           <div>
             <span className="inline-block px-3 py-1 rounded-full bg-[#fff0f3] text-[#ff4d6d] text-xs font-extrabold capitalize mb-2">
               {displayCategory}
             </span>
 
-            <h2 className="text-2xl font-black text-[#590d22] leading-tight mb-2">
+            <h2 className="text-xl sm:text-2xl font-black text-[#590d22] leading-tight mb-2">
               {product.name}
             </h2>
 
-            {/* Stars */}
-            <div className="flex items-center gap-1 mb-3">
-              {[...Array(product.rating || 5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-[#ffb703] text-[#ffb703]" />
-              ))}
-            </div>
-
-            <p className="text-sm text-[#800f2f]/80 leading-relaxed mb-4">
+            <p className="text-sm text-[#800f2f]/80 leading-relaxed mb-3">
               {product.description || "Producto elaborado a mano con hilos de la mejor calidad. Hipolaergénico y suave al tacto."}
             </p>
 
-            <div className="text-3xl font-black text-[#ff4d6d] mb-4">
+            <div className="text-2xl sm:text-3xl font-black text-[#ff4d6d] mb-3">
               ${product.price.toFixed(2)}
             </div>
           </div>

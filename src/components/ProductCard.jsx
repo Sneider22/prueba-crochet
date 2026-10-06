@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 
 export default function ProductCard({ product, onOpenDetail, onAddToCart }) {
   const mainImage = product.image || (product.images && product.images[0]) || '/logo.jpg';
@@ -36,13 +36,6 @@ export default function ProductCard({ product, onOpenDetail, onAddToCart }) {
       {/* Content */}
       <div className="p-2.5 sm:p-4 flex flex-col flex-1 justify-between gap-2 sm:gap-3">
         <div>
-          {/* Rating */}
-          <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5 sm:mb-1">
-            {[...Array(product.rating || 5)].map((_, i) => (
-              <Star key={i} className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-[#ffb703] text-[#ffb703]" />
-            ))}
-          </div>
-
           <h3 
             onClick={() => onOpenDetail(product)}
             className="font-extrabold text-[#590d22] text-xs sm:text-base leading-snug group-hover:text-[#ff4d6d] transition-colors cursor-pointer line-clamp-2"
