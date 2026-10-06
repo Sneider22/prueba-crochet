@@ -128,13 +128,13 @@ export default function App() {
   const handleToggleOffer = async (id) => {
     const prod = products.find(p => p.id === id);
     if (!prod) return;
-    const newOldPrice = prod.oldPrice ? null : Number((prod.price * 1.25).toFixed(2));
+    const newOldPrice = prod.old_price ? null : Number((prod.price * 1.25).toFixed(2));
     const { error } = await supabase
       .from('products')
-      .update({ oldPrice: newOldPrice })
+      .update({ old_price: newOldPrice })
       .eq('id', id);
     if (error) { showToast('Error actualizando oferta', 'error'); return; }
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, oldPrice: newOldPrice } : p));
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, old_price: newOldPrice } : p));
     showToast(newOldPrice ? `"${prod.name}" marcado en OFERTA ✨` : `Oferta removida de "${prod.name}"`, newOldPrice ? 'success' : 'info');
   };
 

@@ -137,14 +137,19 @@ export default function ProductFormModal({ isOpen, onClose, editingProduct, onSa
       const mainImageUrl = allImageUrls[0];
 
       // 3. Guardar/actualizar en la tabla de Supabase
+      // Construimos el objeto sin oldPrice para evitar errores si la columna tiene otro nombre
       const productData = {
         name: name.trim(),
         price: parseFloat(price),
-        oldprice: oldPrice ? parseFloat(oldPrice) : null,
         description: description.trim(),
-        category: finalCats.length === 1 ? finalCats[0] : finalCats[0], // Guardamos la principal
+        category: finalCats.length === 1 ? finalCats[0] : finalCats[0],
         image: mainImageUrl,
       };
+
+      // Solo agregamos old_price si el usuario lo puso
+      if (oldPrice) {
+        productData.old_price = parseFloat(oldPrice);
+      }
 
       let savedProduct;
       if (editingProduct?.id) {

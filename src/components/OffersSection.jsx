@@ -2,7 +2,9 @@ import React from 'react';
 import { Tag, ShoppingBag, Sparkles } from 'lucide-react';
 
 export default function OffersSection({ products, onOpenDetail, onAddToCart }) {
-  const offerProducts = products.filter(p => p.oldPrice);
+  // Compatibilidad: productos de Supabase usan old_price, los locales usan oldPrice
+  const getOldPrice = (p) => p.old_price || p.oldPrice || null;
+  const offerProducts = products.filter(p => getOldPrice(p));
 
   if (offerProducts.length === 0) return null;
 
@@ -62,7 +64,7 @@ export default function OffersSection({ products, onOpenDetail, onAddToCart }) {
                       ${product.price.toFixed(2)}
                     </span>
                     <span className="text-[11px] text-gray-400 line-through font-semibold">
-                      ${product.oldPrice.toFixed(2)}
+                      ${getOldPrice(product).toFixed(2)}
                     </span>
                   </div>
 

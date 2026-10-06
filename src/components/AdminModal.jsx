@@ -177,7 +177,7 @@ export default function AdminModal({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[55vh] overflow-y-auto pr-1">
                     {filteredAdminProducts.map(p => {
-                      const isOffer = !!p.oldPrice;
+                      const isOffer = !!(p.old_price || p.oldPrice);
                       return (
                         <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-2xl bg-white border border-[#ffccd5] shadow-sm hover:shadow-md transition-all">
                           <img
