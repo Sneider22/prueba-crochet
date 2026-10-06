@@ -45,7 +45,7 @@ export default function FaqSection() {
               <span>{faq.q}</span>
               <span className="text-[#ff4d6d] font-bold group-open:rotate-180 transition-transform">▼</span>
             </summary>
-            <div className="p-4 text-xs sm:text-sm text-[#800f2f]/80 leading-relaxed border-t border-[#fff0f3]">
+            <div className="p-4 text-[13px] sm:text-sm text-[#800f2f]/90 font-medium leading-relaxed border-t border-[#fff0f3]">
               {faq.a}
             </div>
           </details>

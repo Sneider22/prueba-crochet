@@ -189,7 +189,10 @@ export default function ProductFormModal({ isOpen, onClose, editingProduct, onSa
   const totalImages = existingImageUrls.length + imagePreviews.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast"
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+    >
       <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#ffccd5] max-h-[90vh] flex flex-col">
         
         {/* Header */}
@@ -204,7 +207,7 @@ export default function ProductFormModal({ isOpen, onClose, editingProduct, onSa
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 custom-scrollbar">
           
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold px-4 py-3 rounded-xl">

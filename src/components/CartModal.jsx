@@ -38,7 +38,10 @@ export default function CartModal({ isOpen, onClose, cart, onUpdateQuantity, onR
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#ffccd5] max-h-[90vh] flex flex-col">
         
         {/* Header — siempre fijo arriba */}
@@ -55,7 +58,7 @@ export default function CartModal({ isOpen, onClose, cart, onUpdateQuantity, onR
         </div>
 
         {/* Lista de productos — SOLO ESTA PARTE HACE SCROLL */}
-        <div className="overflow-y-auto flex-1 p-5 space-y-3">
+        <div className="overflow-y-auto flex-1 p-5 space-y-3 custom-scrollbar">
           {cart.length > 0 ? (
             cart.map(item => (
               <div key={item.id} className="flex items-center gap-3 p-3 rounded-2xl bg-[#fff0f3]/40 border border-[#ffccd5]/50">

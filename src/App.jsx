@@ -35,6 +35,42 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
+  // Lock background body scroll whenever any modal is open
+  const isAnyModalOpen = Boolean(selectedDetailProduct || isCartOpen || isAdminOpen || isFormOpen);
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      document.body.classList.add('overflow-hidden');
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.classList.remove('overflow-hidden');
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+      document.body.style.overflow = '';
+    };
+  }, [isAnyModalOpen]);
+
+  // Handle ESC key to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isFormOpen) {
+          setIsFormOpen(false);
+          setEditingProduct(null);
+        } else if (selectedDetailProduct) {
+          setSelectedDetailProduct(null);
+        } else if (isCartOpen) {
+          setIsCartOpen(false);
+        } else if (isAdminOpen) {
+          setIsAdminOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFormOpen, selectedDetailProduct, isCartOpen, isAdminOpen]);
+
   // Toast notifications queue
   const [toasts, setToasts] = useState([]);
 

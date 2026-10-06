@@ -1,5 +1,17 @@
-import React, { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Tag, Download, RotateCcw, Search, CheckSquare, Package, Database, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Edit2, Trash2, Tag, Download, RotateCcw, Search, CheckSquare, Package, Database, Lock, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+const normalizeTodo = (item) => {
+  if (typeof item === 'string') {
+    return { id: 'local_' + Math.random().toString(36).substring(2, 9), title: item, status: 'red' };
+  }
+  return {
+    id: item.id || 'local_' + Math.random().toString(36).substring(2, 9),
+    title: item.title || item.name || '',
+    status: item.status || 'red'
+  };
+};
 
 export default function AdminModal({ 
   isOpen, 
@@ -16,8 +28,49 @@ export default function AdminModal({
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState('products'); // 'products', 'todos', 'backup'
   const [searchQuery, setSearchQuery] = useState('');
-  const [todos, setTodos] = useState(() => JSON.parse(localStorage.getItem('adminTodos')) || []);
-  const [newTodo, setNewTodo] = useState('');
+
+  // Semáforo Pendientes state
+  const [todos, setTodos] = useState(() => {
+    const saved = localStorage.getItem('adminTodos');
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.map(normalizeTodo) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [newTodoTitle, setNewTodoTitle] = useState('');
+  const [todoFilter, setTodoFilter] = useState('all'); // 'all', 'red', 'yellow', 'green'
+  const [loadingTodos, setLoadingTodos] = useState(false);
+
+  // Fetch todos from Supabase when tab is open
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || activeTab !== 'todos') return;
+
+    const fetchTodos = async () => {
+      if (!supabase) return;
+      try {
+        setLoadingTodos(true);
+        const { data, error } = await supabase
+          .from('todos')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          const normalized = data.map(normalizeTodo);
+          setTodos(normalized);
+          localStorage.setItem('adminTodos', JSON.stringify(normalized));
+        }
+      } catch (err) {
+        console.error("Error fetching todos from Supabase:", err);
+      } finally {
+        setLoadingTodos(false);
+      }
+    };
+
+    fetchTodos();
+  }, [isOpen, isAuthenticated, activeTab]);
 
   if (!isOpen) return null;
 
@@ -30,20 +83,70 @@ export default function AdminModal({
     }
   };
 
-  const handleAddTodo = (e) => {
+  const handleAddTodo = async (e) => {
     e.preventDefault();
-    if (newTodo.trim()) {
-      const updated = [newTodo.trim(), ...todos];
-      setTodos(updated);
-      localStorage.setItem('adminTodos', JSON.stringify(updated));
-      setNewTodo('');
+    if (!newTodoTitle.trim()) return;
+
+    const titleText = newTodoTitle.trim();
+    const tempItem = {
+      id: 'temp_' + Date.now(),
+      title: titleText,
+      status: 'red'
+    };
+
+    const updatedList = [tempItem, ...todos];
+    setTodos(updatedList);
+    localStorage.setItem('adminTodos', JSON.stringify(updatedList));
+    setNewTodoTitle('');
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('todos')
+          .insert({ title: titleText, status: 'red' })
+          .select()
+          .single();
+
+        if (!error && data) {
+          const realItem = normalizeTodo(data);
+          setTodos(prev => {
+            const newList = prev.map(t => t.id === tempItem.id ? realItem : t);
+            localStorage.setItem('adminTodos', JSON.stringify(newList));
+            return newList;
+          });
+        }
+      } catch (err) {
+        console.error("Error saving todo to Supabase:", err);
+      }
     }
   };
 
-  const handleDeleteTodo = (idx) => {
-    const updated = todos.filter((_, i) => i !== idx);
-    setTodos(updated);
-    localStorage.setItem('adminTodos', JSON.stringify(updated));
+  const handleUpdateStatus = async (id, newStatus) => {
+    const updatedList = todos.map(t => t.id === id ? { ...t, status: newStatus } : t);
+    setTodos(updatedList);
+    localStorage.setItem('adminTodos', JSON.stringify(updatedList));
+
+    if (supabase && (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('local_') && !id.startsWith('temp_')))) {
+      try {
+        await supabase.from('todos').update({ status: newStatus }).eq('id', id);
+      } catch (err) {
+        console.error("Error updating todo status in Supabase:", err);
+      }
+    }
+  };
+
+  const handleDeleteTodo = async (id) => {
+    const updatedList = todos.filter(t => t.id !== id);
+    setTodos(updatedList);
+    localStorage.setItem('adminTodos', JSON.stringify(updatedList));
+
+    if (supabase && (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('local_') && !id.startsWith('temp_')))) {
+      try {
+        await supabase.from('todos').delete().eq('id', id);
+      } catch (err) {
+        console.error("Error deleting todo from Supabase:", err);
+      }
+    }
   };
 
   const filteredAdminProducts = products.filter(p => 
@@ -51,9 +154,14 @@ export default function AdminModal({
     (Array.isArray(p.category) ? p.category.some(c => c.toLowerCase().includes(searchQuery.toLowerCase())) : p.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const filteredTodos = todos.filter(t => todoFilter === 'all' || t.status === todoFilter);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast">
-      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#ffccd5] max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-toast"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#ffccd5] h-[90vh] max-h-[640px] flex flex-col">
         
         {/* Modal Header */}
         <div className="p-5 border-b border-[#fff0f3] flex items-center justify-between bg-[#fff0f3]">
@@ -114,7 +222,7 @@ export default function AdminModal({
         ) : (
           <>
             {/* Navigation Tabs */}
-            <div className="flex border-b border-[#ffccd5] bg-white px-4 pt-2 gap-2 overflow-x-auto">
+            <div className="flex border-b border-[#ffccd5] bg-white px-4 pt-2 gap-2 overflow-x-auto shrink-0">
               <button
                 onClick={() => setActiveTab('products')}
                 className={`px-4 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all border-t border-x cursor-pointer ${
@@ -150,7 +258,7 @@ export default function AdminModal({
             </div>
 
             {/* Tab Contents */}
-            <div className="p-5 flex-1 overflow-y-auto">
+            <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
               
               {/* TAB 1: PRODUCTS MANAGER */}
               {activeTab === 'products' && (
@@ -175,7 +283,7 @@ export default function AdminModal({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[55vh] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-1">
                     {filteredAdminProducts.map(p => {
                       const isOffer = !!(p.old_price || p.oldPrice);
                       return (
@@ -233,46 +341,128 @@ export default function AdminModal({
                 </div>
               )}
 
-              {/* TAB 2: TODOS PENDIENTES */}
+              {/* TAB 2: TODOS / PEDIDOS PENDIENTES CON SEMÁFORO Y SUPABASE */}
               {activeTab === 'todos' && (
-                <div className="space-y-4 max-w-lg mx-auto">
-                  <p className="text-xs text-[#800f2f]/80 text-center font-medium">
-                    Anota aquí los amigurumis o encargos de tejido pendientes por entregar.
-                  </p>
-
-                  <form onSubmit={handleAddTodo} className="flex gap-2">
+                <div className="space-y-3.5 max-w-2xl mx-auto">
+                  
+                  {/* Single-line Add Form (Default Red Status) */}
+                  <form onSubmit={handleAddTodo} className="flex items-center gap-2 bg-[#fff0f3] p-1.5 rounded-full border border-[#ffccd5]">
                     <input
                       type="text"
-                      value={newTodo}
-                      onChange={(e) => setNewTodo(e.target.value)}
-                      placeholder="Ej: Snoopy aviador para entregarlo el viernes..."
-                      className="flex-1 px-4 py-2.5 rounded-full border border-[#ffccd5] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#ff8fa3]"
+                      value={newTodoTitle}
+                      onChange={(e) => setNewTodoTitle(e.target.value)}
+                      placeholder="Añadir pedido (ej: Snoopy aviador para el viernes)..."
+                      className="flex-1 bg-transparent px-3 py-1.5 text-xs sm:text-sm font-medium text-[#590d22] placeholder-[#800f2f]/50 focus:outline-none"
                     />
+
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-full bg-[#ff4d6d] text-white text-xs font-bold shadow-md hover:bg-[#ff8fa3] transition-all flex items-center gap-1 cursor-pointer"
+                      className="px-4.5 py-2 rounded-full bg-gradient-to-r from-[#ff8fa3] to-[#ff4d6d] text-white text-xs sm:text-sm font-extrabold shadow-sm hover:shadow-md active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
                     >
                       <Plus className="w-4 h-4" /> Añadir
                     </button>
                   </form>
 
-                  <div className="space-y-2">
-                    {todos.length > 0 ? (
-                      todos.map((todo, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#fff0f3] border border-[#ffccd5]">
-                          <span className="text-xs font-semibold text-[#590d22]">{todo}</span>
-                          <button
-                            onClick={() => handleDeleteTodo(idx)}
-                            className="p-1 text-rose-500 hover:text-rose-700 transition-colors"
+                  {/* Combined Filter & Counter Bar */}
+                  <div className="flex items-center justify-between gap-1 bg-white p-1 rounded-2xl border border-[#ffccd5] overflow-x-auto text-xs font-bold">
+                    {[
+                      { id: 'all', label: `Todos (${todos.length})` },
+                      { id: 'red', label: `🔴 Por empezar (${todos.filter(t => t.status === 'red').length})` },
+                      { id: 'yellow', label: `🟡 En proceso (${todos.filter(t => t.status === 'yellow').length})` },
+                      { id: 'green', label: `🟢 Listo (${todos.filter(t => t.status === 'green').length})` }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setTodoFilter(tab.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap flex-1 text-center ${
+                          todoFilter === tab.id
+                            ? 'bg-[#ff4d6d] text-white shadow-sm'
+                            : 'text-[#800f2f] hover:bg-[#fff0f3]'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Orders List */}
+                  <div className="space-y-2.5 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1">
+                    {loadingTodos ? (
+                      <div className="text-center py-8 text-xs text-[#800f2f] font-bold flex justify-center items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#ff4d6d]" /> Cargando pedidos de Supabase...
+                      </div>
+                    ) : filteredTodos.length > 0 ? (
+                      filteredTodos.map((todo) => {
+                        const statusConfig = {
+                          red: { bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800' },
+                          yellow: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800' },
+                          green: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800' }
+                        }[todo.status || 'red'];
+
+                        return (
+                          <div 
+                            key={todo.id} 
+                            className={`p-3.5 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${statusConfig.bg}`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs sm:text-sm font-extrabold ${statusConfig.text}`}>
+                                {todo.title}
+                              </p>
+                            </div>
+
+                            {/* Semáforo Switcher & Delete Button */}
+                            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-black/5">
+                              
+                              <div className="flex items-center gap-1 bg-white/80 p-1 rounded-full border border-black/10 shadow-inner">
+                                <button
+                                  onClick={() => handleUpdateStatus(todo.id, 'red')}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all cursor-pointer ${
+                                    todo.status === 'red' ? 'bg-rose-500 text-white scale-110 shadow-md font-bold' : 'hover:bg-rose-100 opacity-60'
+                                  }`}
+                                  title="🔴 Por empezar"
+                                >
+                                  🔴
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(todo.id, 'yellow')}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all cursor-pointer ${
+                                    todo.status === 'yellow' ? 'bg-amber-500 text-white scale-110 shadow-md font-bold' : 'hover:bg-amber-100 opacity-60'
+                                  }`}
+                                  title="🟡 En proceso"
+                                >
+                                  🟡
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(todo.id, 'green')}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all cursor-pointer ${
+                                    todo.status === 'green' ? 'bg-emerald-500 text-white scale-110 shadow-md font-bold' : 'hover:bg-emerald-100 opacity-60'
+                                  }`}
+                                  title="🟢 Listo"
+                                >
+                                  🟢
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={() => handleDeleteTodo(todo.id)}
+                                className="p-1.5 rounded-full bg-white text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-200 cursor-pointer"
+                                title="Eliminar pedido"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                          </div>
+                        );
+                      })
                     ) : (
-                      <p className="text-xs text-[#800f2f]/60 text-center py-6">No hay tareas pendientes. ¡Todo listo! ✨</p>
+                      <div className="text-center py-8 text-xs text-[#800f2f]/60 bg-[#fff0f3]/50 rounded-2xl border border-dashed border-[#ffccd5]">
+                        <p className="font-semibold">No hay pedidos registrados en esta categoría ✨</p>
+                      </div>
                     )}
                   </div>
+
                 </div>
               )}
 
