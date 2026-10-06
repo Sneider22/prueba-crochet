@@ -1,52 +1,115 @@
-# Zafiro Crochet — Tienda Online 🧶
+# Zafiro Crochet
 
-> Sitio web simple para mostrar y vender creaciones de crochet (amigurumis, ramos, llaveros, peluches y productos personalizados).
+Plataforma web para la tienda y administración de **Zafiro Crochet**, una marca de piezas hechas a mano en Caracas, Venezuela. Incluye catálogo de productos, carrito de compras con integración a WhatsApp y un panel de administración con gestión de inventario, pedidos pendientes y respaldos — todo sincronizado con Supabase en tiempo real.
 
-## Propósito
+---
 
-Este proyecto es una tienda online ligera diseñada para presentar productos hechos a mano, permitir a los usuarios explorar catálogos, añadir artículos a un carrito y enviar pedidos vía WhatsApp. Está pensado como un catálogo responsive y fácil de personalizar para artesanías.
+## Funcionalidades
 
-## ✅ Funcionalidades principales 
+### Tienda
 
-- Visualización de catálogo de productos con paginación (`index.html`, `products.js`, `main.js`).
-- Filtros por categoría y búsqueda flexible por palabras clave (keywords).
-- Modal de detalle de producto con galería de imágenes, descripción y selección de cantidad.
-- Carrito de compras con persistencia (guarda los ítems y cantidades) 🛒.
-- Opción extra en el carrito: añadir caja de regalo de $3 y recalcular el total 🎁.
-- Botón flotante (FAB) de WhatsApp con saludo dinámico según la hora del día 📲.
-- Generación de mensaje de pedido con saludos personalizados (buenos días/tardes/noches).
-- Panel de administración simple (modal) con lista de pendientes (to‑do) guardada en `localStorage` ⚙️.
-- Diseño responsive y UI moderna con estilos 
+- Catálogo dinámico con filtros por categoría y búsqueda en tiempo real.
+- Sección de ofertas destacada, separada del catálogo principal.
+- Modal de detalle por producto con galería de imágenes, descripción completa y selector de cantidad.
+- Las imágenes se muestran completas sin recortes, con dimensiones consistentes sin importar el formato original.
+- Carrito de compras persistente (LocalStorage) con control de cantidades y opción de empaque para regalo.
+- Envío del pedido directo a WhatsApp con el detalle formateado y un saludo dinámico según la hora del día.
 
-## 🛠️ Estructura del proyecto
+### Panel de administración (Zafiro Admin)
 
-- `index.html` — Interfaz principal y estructura de la página.
-- `style.css` — Estilos, variables CSS y responsive.
-- `products.js` — (Lista de productos) Definición del catálogo (imágenes, precios, categorías).
-- `main.js` — Lógica de la aplicación: renderizado, filtros, carrito, modales y envío a WhatsApp.
-- `fotos productos/` — Carpeta sugerida para las imágenes de producto.
+- Acceso protegido por contraseña desde el encabezado.
+- Crear, editar y eliminar productos con carga múltiple de fotos a Supabase Storage.
+- Marcar o desmarcar productos en oferta con un toque; el precio anterior se calcula automáticamente.
+- Gestión de pedidos pendientes con semáforo de estatus:
+  - **Rojo** — Por empezar (asignado automáticamente al crear el pedido).
+  - **Amarillo** — En proceso.
+  - **Verde** — Listo o entregado.
+- Filtros por estatus con contadores en tiempo real, sincronizados con Supabase.
+- Respaldo del catálogo completo en formato JSON descargable.
 
-## Cómo funciona (resumen técnico)
+---
 
-1. Al abrir la página, `main.js` carga los productos de `products.js` y sincroniza el carrito.
-2. El usuario puede filtrar por categorías o usar el buscador inteligente (acepta múltiples palabras clave en cualquier orden).
-3. Haciendo clic en un producto se accede al detalle: galería, descripción y selector de cantidad.
-4. Al añadir al carrito, los datos persisten en `localStorage`.
-5. En el carrito, se puede sumar una caja de regalo ($3), ver el total y enviar el pedido por WhatsApp con un saludo automático ajustable a la hora.
+## Tecnologías
 
-## 🎨 Personalización rápida
+| Capa | Herramienta |
+|---|---|
+| Frontend | React 18 + Vite |
+| Estilos | Tailwind CSS |
+| Base de datos | Supabase (PostgreSQL) |
+| Almacenamiento de imágenes | Supabase Storage |
+| Iconos | Lucide React |
+| Persistencia offline | LocalStorage |
 
-- Añadir/editar productos: modificar `products.js` agregando objetos con las propiedades `id`, `name`, `price`, `image`, `images` (opcional), `category`, `description` y `oldPrice` (opcional para ofertas).
-- Cambiar estilos: editar variables en `:root` dentro de `style.css` para colores, radio de bordes y sombras ✨.
-- Número de items por página: ajustar `itemsPerPage` en `main.js`.
+---
 
-## 🔧 Consideraciones y mejoras sugeridas
+## Configuración de Supabase
 
-- Validaciones adicionales en formularios y manejo de errores (por ejemplo, verificar disponibilidad de imágenes).
-- Agregar un backend real para persistencia centralizada, pagos y gestión de inventario.
-- Internacionalización (i18n) para soportar varios idiomas.
-- Mejoras de accesibilidad (atributos ARIA, foco en modales, roles semánticos).
-- Integración con servicios de envío y cálculo de costos en tiempo real.
+### Variables de entorno
 
+Crea un archivo `.env` en la raíz del proyecto:
 
+```
+VITE_SUPABASE_URL=tu_url_de_supabase
+VITE_SUPABASE_ANON_KEY=tu_clave_anonima
+```
 
+Si no se configura, la app carga los productos locales como fallback.
+
+### Tablas (SQL Editor)
+
+```sql
+-- Tabla de productos
+CREATE TABLE public.products (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL,
+  price numeric NOT NULL,
+  old_price numeric,
+  category text[],
+  description text,
+  images text[],
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read"   ON public.products FOR SELECT USING (true);
+CREATE POLICY "Public insert" ON public.products FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update" ON public.products FOR UPDATE USING (true);
+CREATE POLICY "Public delete" ON public.products FOR DELETE USING (true);
+
+-- Tabla de pedidos pendientes
+CREATE TABLE public.todos (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  title text NOT NULL,
+  status text DEFAULT 'red',
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.todos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read"   ON public.todos FOR SELECT USING (true);
+CREATE POLICY "Public insert" ON public.todos FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update" ON public.todos FOR UPDATE USING (true);
+CREATE POLICY "Public delete" ON public.todos FOR DELETE USING (true);
+```
+
+### Storage
+
+Crea un bucket llamado `product-images` y configúralo como **público**.
+
+---
+
+## Instalación y uso local
+
+```bash
+# Instalar dependencias
+npm install
+
+# Servidor de desarrollo
+npm run dev
+
+# Build de producción
+npm run build
+```
+
+---
+
+&copy; Zafiro Crochet · Caracas, Venezuela
